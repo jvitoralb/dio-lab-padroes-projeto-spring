@@ -1,16 +1,14 @@
 package one.digitalinnovation.gof.service.impl;
 
-import java.util.Optional;
-
+import one.digitalinnovation.gof.model.Endereco;
+import one.digitalinnovation.gof.model.EnderecoRepository;
+import one.digitalinnovation.gof.service.ViaCepService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import one.digitalinnovation.gof.model.Cliente;
 import one.digitalinnovation.gof.model.ClienteRepository;
-import one.digitalinnovation.gof.model.Endereco;
-import one.digitalinnovation.gof.model.EnderecoRepository;
 import one.digitalinnovation.gof.service.ClienteService;
-import one.digitalinnovation.gof.service.ViaCepService;
 
 /**
  * Implementação da <b>Strategy</b> {@link ClienteService}, a qual pode ser
@@ -21,7 +19,6 @@ import one.digitalinnovation.gof.service.ViaCepService;
  */
 @Service
 public class ClienteServiceImpl implements ClienteService {
-
 	// Singleton: Injetar os componentes do Spring com @Autowired.
 	@Autowired
 	private ClienteRepository clienteRepository;
@@ -29,7 +26,7 @@ public class ClienteServiceImpl implements ClienteService {
 	private EnderecoRepository enderecoRepository;
 	@Autowired
 	private ViaCepService viaCepService;
-	
+
 	// Strategy: Implementar os métodos definidos na interface.
 	// Facade: Abstrair integrações com subsistemas, provendo uma interface simples.
 
@@ -42,21 +39,37 @@ public class ClienteServiceImpl implements ClienteService {
 	@Override
 	public Cliente buscarPorId(Long id) {
 		// Buscar Cliente por ID.
-		Optional<Cliente> cliente = clienteRepository.findById(id);
-		return cliente.get();
+		return clienteRepository.findById(id).orElse(null);
 	}
 
 	@Override
 	public void inserir(Cliente cliente) {
-		salvarClienteComCep(cliente);
+		// Verificar se o endereço do Cliente já existe (pelo CEP).
+		String cep = cliente.getEndereco().getCep();
+		Endereco endereco = enderecoRepository.findById(cep).orElse(null);
+
+		if (endereco == null) { // Caso não exista, integrar com o ViaCEP e persistir o retorno.
+			endereco = viaCepService.consultarCep(cep);
+			enderecoRepository.save(endereco);
+		}
+
+		cliente.setEndereco(endereco);
+
+		// Inserir Cliente, vinculando o Endereço (novo ou existente).
+		clienteRepository.save(cliente);
 	}
 
 	@Override
-	public void atualizar(Long id, Cliente cliente) {
+	public void atualizarEndereco(Long id, Cliente cliente) {
 		// Buscar Cliente por ID, caso exista:
-		Optional<Cliente> clienteBd = clienteRepository.findById(id);
-		if (clienteBd.isPresent()) {
-			salvarClienteComCep(cliente);
+		Cliente alvo = clienteRepository.findById(id).orElse(null);
+		boolean alvoEndereco = enderecoRepository.existsById(cliente.getEndereco().getCep());
+
+		if (alvo == null || !alvoEndereco) {
+			inserir(cliente);
+		} else {
+			// Alterar o Cliente, vinculando o Endereço (novo ou existente).
+			alvo.setEndereco(cliente.getEndereco());
 		}
 	}
 
@@ -65,19 +78,4 @@ public class ClienteServiceImpl implements ClienteService {
 		// Deletar Cliente por ID.
 		clienteRepository.deleteById(id);
 	}
-
-	private void salvarClienteComCep(Cliente cliente) {
-		// Verificar se o Endereco do Cliente já existe (pelo CEP).
-		String cep = cliente.getEndereco().getCep();
-		Endereco endereco = enderecoRepository.findById(cep).orElseGet(() -> {
-			// Caso não exista, integrar com o ViaCEP e persistir o retorno.
-			Endereco novoEndereco = viaCepService.consultarCep(cep);
-			enderecoRepository.save(novoEndereco);
-			return novoEndereco;
-		});
-		cliente.setEndereco(endereco);
-		// Inserir Cliente, vinculando o Endereco (novo ou existente).
-		clienteRepository.save(cliente);
-	}
-
 }

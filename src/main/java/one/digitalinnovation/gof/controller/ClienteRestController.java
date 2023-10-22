@@ -26,33 +26,33 @@ import one.digitalinnovation.gof.service.ClienteService;
 public class ClienteRestController {
 
 	@Autowired
-	private ClienteService clienteService;
+	private ClienteService service;
 
 	@GetMapping
 	public ResponseEntity<Iterable<Cliente>> buscarTodos() {
-		return ResponseEntity.ok(clienteService.buscarTodos());
+		return ResponseEntity.ok(service.buscarTodos());
 	}
 
 	@GetMapping("/{id}")
-	public ResponseEntity<Cliente> buscarPorId(@PathVariable Long id) {
-		return ResponseEntity.ok(clienteService.buscarPorId(id));
+	public ResponseEntity<Cliente> buscar(@PathVariable Long id) {
+		return ResponseEntity.ok(service.buscarPorId(id));
 	}
 
 	@PostMapping
 	public ResponseEntity<Cliente> inserir(@RequestBody Cliente cliente) {
-		clienteService.inserir(cliente);
+		service.inserir(cliente);
 		return ResponseEntity.ok(cliente);
 	}
 
 	@PutMapping("/{id}")
 	public ResponseEntity<Cliente> atualizar(@PathVariable Long id, @RequestBody Cliente cliente) {
-		clienteService.atualizar(id, cliente);
+		service.atualizarEndereco(id, cliente);
 		return ResponseEntity.ok(cliente);
 	}
 
 	@DeleteMapping("/{id}")
 	public ResponseEntity<Void> deletar(@PathVariable Long id) {
-		clienteService.deletar(id);
+		service.deletar(id);
 		return ResponseEntity.ok().build();
 	}
 }
